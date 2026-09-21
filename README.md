@@ -1,4 +1,4 @@
-# Monitoramento de solo — ESP32 e C#
+# AppEmbarcado — Monitoramento de solo com ESP32 e C#
 
 Base de classes em .NET 8, preparada para uma futura interface WPF. Ainda não há janela ou executável: este projeto compila como biblioteca.
 
