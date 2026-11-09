@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Diagnostics;
+using System.ComponentModel;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -20,17 +21,25 @@ namespace AppEmbarcado.Wpf
     public partial class MainWindow : Window
     {
         private readonly RepositorioLeituras repositorio = new();
-        private readonly ServidorHttp servidor;
+        private readonly ClienteMqtt mqtt;
         private readonly MainViewModel viewModel;
         private readonly DispatcherTimer timer;
-        private bool servidorIniciado;
+        private bool mqttIniciado;
         private bool encerrando;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            servidor = new ServidorHttp(repositorio);
+            mqtt = new ClienteMqtt(
+                repositorio,
+                host: "localhost",
+                porta: 1883,
+                usuario: "appcsharp",
+                senha: "1875"
+            );
+            mqtt.Log += msg => Debug.WriteLine(msg);
+
             viewModel = new MainViewModel(repositorio);
             DataContext = viewModel;
 
@@ -48,14 +57,14 @@ namespace AppEmbarcado.Wpf
         {
             try
             {
-                await servidor.IniciarAsync();
-                servidorIniciado = true;
+                await mqtt.IniciarAsync();
+                mqttIniciado = true;
                 viewModel.Atualizar();
                 timer.Start();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Não foi possível iniciar o servidor: {ex.Message}");
+                MessageBox.Show($"Não foi possível iniciar o cliente MQTT: {ex.Message}");
                 Close();
             }
         }
@@ -70,14 +79,14 @@ namespace AppEmbarcado.Wpf
 
             try
             {
-                if (servidorIniciado)
+                if (mqttIniciado)
                 {
-                    await servidor.PararAsync();
+                    await mqtt.PararAsync();
                 }
             }
             finally
             {
-                await servidor.DisposeAsync();
+                await mqtt.DisposeAsync();
                 Close();
             }
         }
