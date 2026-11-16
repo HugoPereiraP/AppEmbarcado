@@ -1,23 +1,12 @@
-﻿using System.Diagnostics;
-using System.ComponentModel;
-using System.Text;
+﻿using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 using AppEmbarcado.Services;
 
 namespace AppEmbarcado.Wpf
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
         private readonly RepositorioLeituras repositorio = new();
@@ -31,8 +20,13 @@ namespace AppEmbarcado.Wpf
         {
             InitializeComponent();
 
+            var dbPath = Path.Combine(FindSolutionRoot(), "dados", "leituras.db");
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+            var armazenamento = new ArmazenamentoSqlite(dbPath);
+
             mqtt = new ClienteMqtt(
                 repositorio,
+                armazenamento,
                 host: "localhost",
                 porta: 1883,
                 usuario: "appcsharp",
@@ -51,6 +45,13 @@ namespace AppEmbarcado.Wpf
 
             Loaded += JanelaCarregada;
             Closing += JanelaFechando;
+        }
+        private static string FindSolutionRoot()
+        {
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir is not null && dir.GetFiles("*.sln*").Length == 0)
+                dir = dir.Parent;
+            return dir?.FullName ?? AppContext.BaseDirectory;
         }
 
         private async void JanelaCarregada(object sender, RoutedEventArgs e)
