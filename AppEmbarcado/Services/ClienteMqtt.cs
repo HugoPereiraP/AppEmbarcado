@@ -17,6 +17,9 @@ public sealed class ClienteMqtt : IAsyncDisposable
     private readonly IMqttClient cliente;
     private readonly MqttClientOptions opcoes;
     private readonly MqttClientSubscribeOptions assinatura;
+    private readonly Dictionary<string, DateTimeOffset> ultimoSalvo = new();
+    private readonly IArmazenamentoLeituras armazenamento;
+    private static readonly TimeSpan IntervaloGravacao = TimeSpan.FromSeconds(60);
     private CancellationTokenSource? cts;
     private Task? tarefaConexao;
 
@@ -24,6 +27,7 @@ public sealed class ClienteMqtt : IAsyncDisposable
 
     public ClienteMqtt(
         RepositorioLeituras repositorio,
+        IArmazenamentoLeituras armazenamento,
         string host,
         int porta,
         string usuario,
@@ -31,11 +35,13 @@ public sealed class ClienteMqtt : IAsyncDisposable
         string topico = TopicoPadrao)
     {
         ArgumentNullException.ThrowIfNull(repositorio);
+        ArgumentNullException.ThrowIfNull(armazenamento);
         ArgumentException.ThrowIfNullOrWhiteSpace(host);
         if (porta is < 1 or > 65535)
             throw new ArgumentOutOfRangeException(nameof(porta));
 
         this.repositorio = repositorio;
+        this.armazenamento = armazenamento;
 
         opcoes = new MqttClientOptionsBuilder()
             .WithTcpServer(host, porta)
@@ -150,6 +156,14 @@ public sealed class ClienteMqtt : IAsyncDisposable
             }
 
             repositorio.Registrar(leitura);
+
+            var agora = DateTimeOffset.UtcNow;
+            var id = leitura.DispositivoId ?? "";
+            if (!ultimoSalvo.TryGetValue(id, out var ultimo) || agora - ultimo >= IntervaloGravacao)
+            {
+                ultimoSalvo[id] = agora;
+                armazenamento.Salvar(agora, leitura);
+            }
         }
         catch (JsonException ex)
         {
