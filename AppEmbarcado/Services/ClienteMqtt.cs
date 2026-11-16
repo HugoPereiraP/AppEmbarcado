@@ -9,6 +9,7 @@ namespace AppEmbarcado.Services;
 public sealed class ClienteMqtt : IAsyncDisposable
 {
     public const string TopicoPadrao = "appembarcado/leituras";
+    public const string TopicoStatus = "appembarcado/+/status";
 
     private static readonly JsonSerializerOptions JsonOpcoes = new(JsonSerializerDefaults.Web);
 
@@ -47,6 +48,7 @@ public sealed class ClienteMqtt : IAsyncDisposable
         var factory = new MqttFactory();
         assinatura = factory.CreateSubscribeOptionsBuilder()
             .WithTopicFilter(f => f.WithTopic(topico).WithAtLeastOnceQoS())
+            .WithTopicFilter(f => f.WithTopic(TopicoStatus).WithAtLeastOnceQoS())
             .Build();
 
         cliente = factory.CreateMqttClient();
@@ -98,6 +100,35 @@ public sealed class ClienteMqtt : IAsyncDisposable
     }
 
     private Task AoReceberMensagem(MqttApplicationMessageReceivedEventArgs e)
+    {
+        if (e.ApplicationMessage.Topic.EndsWith("/status", StringComparison.Ordinal))
+        {
+            return TratarStatus(e);
+        }
+        return TratarLeitura(e);
+    }
+
+    private Task TratarStatus(MqttApplicationMessageReceivedEventArgs e)
+    {
+        try
+        {
+            // appembarcado/<id>/status
+            var partes = e.ApplicationMessage.Topic.Split('/');
+            if (partes.Length != 3) return Task.CompletedTask;
+
+            var id = partes[1];
+            var online = e.ApplicationMessage.ConvertPayloadToString() == "online";
+            Log?.Invoke($"Dispositivo {id}: {(online ? "online" : "offline")}");
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke($"Erro ao processar status: {ex.Message}");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task TratarLeitura(MqttApplicationMessageReceivedEventArgs e)
     {
         try
         {
