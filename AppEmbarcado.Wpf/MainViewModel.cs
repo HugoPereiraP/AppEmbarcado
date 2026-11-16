@@ -125,11 +125,11 @@ namespace AppEmbarcado.Wpf
             ResistivoAdc = leitura?.Dados.ResistivoAdc is int resistivo
                 ? $"{resistivo} ADC"
                 : "Sem dados";
-            Temperatura = leitura?.Dados.TemperaturaC is double temperatura
-                ? $"{temperatura} ºC"
+            Temperatura = leitura?.Dados.TemperaturaC is double t
+                ? $"{t:F1} °C"
                 : "Sem dados";
-            UmidadeAr = leitura?.Dados.UmidadeArPercentual is double umidade
-                ? $"{umidade} %"
+            UmidadeAr = leitura?.Dados.UmidadeArPercentual is double u
+                ? $"{u:F0} %"
                 : "Sem dados";
             StatusBomba = leitura?.Dados.BombaLigada switch
             {
